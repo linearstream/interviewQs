@@ -1,6 +1,6 @@
 # Color Grid Adjacency Problem
 
-[Tech Lead: Mock Google Interview (for SW Job)]:https://youtu.be/IWvbPIYQPFM?t=308
+[Tech Lead: Mock Google Interview (for SW Job)](https://youtu.be/IWvbPIYQPFM?t=308)
 
 Given a grid, find the maximum number of connected boxes with a common color.
 
