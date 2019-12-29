@@ -126,7 +126,14 @@ class ColorMapLoader
 end
 
 # Provides a representation of a 2d array of color strings
+# Unlinked representation of input colors
 class ColorMap
+  def self.generate(csv_file)
+    coord_mgr = CoordMgr.new
+    color_map_data = ColorMapLoader.load(csv_file)
+    new(color_map_data, coord_mgr)
+  end
+
   def initialize(color_map_data, coord_mgr)
     @data = color_map_data
     @coord_mgr = coord_mgr
@@ -183,8 +190,8 @@ class ColorGrid
     Hash[
       unvisited_items.map do |coords, item|
         [coords,
-         {color: item.color,
-          count: item.count_common_neighbors}]
+         { color: item.color,
+           count: item.count_common_neighbors }]
       end
     ]
   end
@@ -199,22 +206,16 @@ end
 # Main application runner class.
 # Call the factory method with a csv with a color mapping.
 class ColorMapMaxAdjacentCalculator
-
   def self.run(csv_file)
-    coord_mgr = CoordMgr.new
-    # Loads the raw data
-    color_map_data = ColorMapLoader.load(csv_file)
-    # ColorMap is stateless and unlinked
-    color_map = ColorMap.new(color_map_data, coord_mgr)
+    color_map = ColorMap.generate(csv_file)
     cmmac = ColorMapMaxAdjacentCalculator.generate(color_map)
-    shared_max = cmmac.calculate_shared_max
     ColorMapMaxAdjacentCalculatorReporter.build_report(
-      csv_file, color_map, shared_max
+      csv_file, color_map, cmmac.calculate_shared_max
     )
   end
 
   def self.generate(color_map)
-    # ColorGrid is linked and stateful
+    # ColorGrid is linked representation of color_map
     new(ColorGrid.generate(color_map))
   end
 
