@@ -81,7 +81,7 @@ end
 
 # Class for managing an ordered pair and its relation with neighbors
 class Coord
-  def initialize(ord_pair, coord_mgr = nil)
+  def initialize(ord_pair, coord_mgr)
     @ord_pair = ord_pair
     @coord_mgr = coord_mgr
   end
