@@ -24,11 +24,7 @@ class GridItem
   end
 
   def neighbor_color(direction)
-    if (nb = neighbor(direction))
-      nb.color
-    else
-      nb # nil
-    end
+    neighbor(direction).color
   end
 
   def visited?
@@ -78,11 +74,8 @@ class CoordMgr
 
   # Returns either the cached coordinate pair or creates a new one and returns
   def generate(ord_pair)
-    if @coordinates.key?(ord_pair)
-      @coordinates[ord_pair]
-    else
-      @coordinates[ord_pair] = Coord.new(ord_pair, self)
-    end
+    @coordinates[ord_pair] ||= Coord.new(ord_pair, self)
+    @coordinates[ord_pair]
   end
 end
 
@@ -102,7 +95,7 @@ class Coord
   end
 
   def north
-    row.zero? ? nil : @coord_mgr.generate(OrderedPair.new(row - 1, col))
+    @coord_mgr.generate(OrderedPair.new(row - 1, col))
   end
 
   def east
@@ -114,15 +107,11 @@ class Coord
   end
 
   def west
-    col.zero? ? nil : @coord_mgr.generate(OrderedPair.new(row, col - 1))
+    @coord_mgr.generate(OrderedPair.new(row, col - 1))
   end
 
   def to_s
     "(#{row}, #{col})"
-  end
-
-  def inspect
-    to_s
   end
 end
 
@@ -138,9 +127,9 @@ end
 
 # Provides a representation of a 2d array of color strings
 class ColorMap
-  def initialize(color_map_data)
+  def initialize(color_map_data, coord_mgr)
     @data = color_map_data
-    @coord_mgr = CoordMgr.new
+    @coord_mgr = coord_mgr
   end
 
   def inspect
@@ -164,7 +153,7 @@ class ColorGrid
   def self.generate(color_map)
     grid = build_color_grid(color_map)
     connect_grid_linkage(grid)
-    new(grid, color_map)
+    new(grid)
   end
 
   def self.build_color_grid(color_map)
@@ -186,21 +175,16 @@ class ColorGrid
     end
   end
 
-  def initialize(grid, color_map)
+  def initialize(grid)
     @grid = grid
-    @color_map = color_map
-  end
-
-  def inspect
-    @color_map.inspect
   end
 
   def traverse_shared_colors
     Hash[
       unvisited_items.map do |coords, item|
         [coords,
-         { color: item.color,
-           count: item.count_common_neighbors }]
+         {color: item.color,
+          count: item.count_common_neighbors}]
       end
     ]
   end
@@ -215,28 +199,27 @@ end
 # Main application runner class.
 # Call the factory method with a csv with a color mapping.
 class ColorMapMaxAdjacentCalculator
-  attr_reader :color_map
 
   def self.run(csv_file)
-    cmmac = ColorMapMaxAdjacentCalculator.generate(csv_file)
+    coord_mgr = CoordMgr.new
+    # Loads the raw data
+    color_map_data = ColorMapLoader.load(csv_file)
+    # ColorMap is stateless and unlinked
+    color_map = ColorMap.new(color_map_data, coord_mgr)
+    cmmac = ColorMapMaxAdjacentCalculator.generate(color_map)
     shared_max = cmmac.calculate_shared_max
-    ColorMapMaxAdjacentCalculatorReporter.report(
-      csv_file, cmmac.color_map, shared_max
+    ColorMapMaxAdjacentCalculatorReporter.build_report(
+      csv_file, color_map, shared_max
     )
   end
 
-  def self.generate(color_map_file)
-    # Loads the raw data
-    color_map_data = ColorMapLoader.load(color_map_file)
-    # ColorMap is stateless and unlinked
-    color_map = ColorMap.new(color_map_data)
+  def self.generate(color_map)
     # ColorGrid is linked and stateful
-    new(ColorGrid.generate(color_map), color_map)
+    new(ColorGrid.generate(color_map))
   end
 
-  def initialize(color_grid, color_map)
+  def initialize(color_grid)
     @color_grid = color_grid
-    @color_map = color_map
   end
 
   def calculate_shared_max
@@ -246,9 +229,9 @@ class ColorMapMaxAdjacentCalculator
   end
 end
 
-# Returns an array of strings for the report
+# Returns an array of strings for printing a report
 class ColorMapMaxAdjacentCalculatorReporter
-  def self.report(csv_file, color_map, shared_max)
+  def self.build_report(csv_file, color_map, shared_max)
     report_color_map(csv_file, color_map) +
       [report_shared_max(shared_max)]
   end
@@ -256,11 +239,9 @@ class ColorMapMaxAdjacentCalculatorReporter
   def self.report_color_map(csv_file, color_map)
     border_edge = '-' * 3
     border_mid = '-' * csv_file.length
-    [
-      border_edge + csv_file + border_edge,
-      color_map.inspect,
-      border_edge + border_mid + border_edge
-    ]
+    [border_edge + csv_file + border_edge,
+     color_map.inspect,
+     border_edge + border_mid + border_edge]
   end
 
   def self.report_shared_max(max_data)
